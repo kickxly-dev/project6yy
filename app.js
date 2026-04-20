@@ -3,16 +3,33 @@ let session = null;
 let previousSession = null;
 let isHelper = window.HELPER_MODE || false;
 
-// Alert sound (base64 encoded short beep)
-const ALERT_SOUND = "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2Onp+ZjHlqYF9ncYOLk5aWj4F0amVodYWJjo+OioN7bWdlcIKFh4eGhIN8cGhnaH+DhYWFhYSDe3BpZ2l/g4WFhISEg3twaWdpf4OFhYSEhIN7cGlnaX+DhYWEhISDe3BpZ2l/g4WFhISEg3twaWdpf4OFhYSEhIN7cGlnaX+DhYWEhA==";
-
-// Play alert sound
+// Play alert sound using Web Audio API (louder and more reliable)
 function playAlertSound() {
   try {
-    const audio = new Audio(ALERT_SOUND);
-    audio.volume = 1.0;
-    audio.play().catch(() => {});
-  } catch (e) {}
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.frequency.value = 800;
+    osc.type = "square";
+    gain.gain.value = 1.0;
+    
+    osc.start();
+    
+    // Beep pattern: on for 200ms, off for 100ms, on for 200ms
+    setTimeout(() => { gain.gain.value = 0; }, 200);
+    setTimeout(() => { gain.gain.value = 1.0; }, 300);
+    setTimeout(() => { gain.gain.value = 0; }, 500);
+    setTimeout(() => { osc.stop(); ctx.close(); }, 600);
+  } catch (e) {
+    console.error("Sound failed:", e);
+  }
 }
 
 // Request notification permission
@@ -52,6 +69,7 @@ const switchBtn = document.getElementById("switchBtn");
 const alertBox = document.getElementById("alertBox");
 const connectBtn = document.getElementById("connectBtn");
 const refreshBtn = document.getElementById("refreshBtn");
+const testAlertBtn = document.getElementById("testAlertBtn");
 const statusText = document.getElementById("statusText");
 const helperChatBox = document.getElementById("helperChatBox");
 const helperMessages = document.getElementById("helperMessages");
@@ -283,6 +301,23 @@ connectBtn.addEventListener("click", async () => {
 
 refreshBtn.addEventListener("click", refresh);
 
+// Test alert button - also unlocks audio context
+testAlertBtn.addEventListener("click", async () => {
+  playAlertSound();
+  await requestNotificationPermission();
+  
+  // Show test notification
+  if (Notification.permission === "granted") {
+    new Notification("TEST ALERT", {
+      body: "This is a test. You will hear this sound when Joe needs help!",
+      icon: "/icon.svg",
+      tag: "test-alert"
+    });
+  }
+  
+  alert("If you heard a beep and saw a notification, alerts are working!");
+});
+
 chatForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = chatInput.value.trim();
@@ -313,9 +348,14 @@ helperEndBtn.addEventListener("click", async () => {
   await refresh();
 });
 
-switchBtn.addEventListener("click", () => {
+switchBtn.addEventListener("click", async () => {
   isHelper = !isHelper;
   updateUI();
+  
+  // Request notification permission when switching to helper mode
+  if (isHelper) {
+    await requestNotificationPermission();
+  }
 });
 
 // Camera button handlers
