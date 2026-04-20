@@ -408,36 +408,55 @@ function endVideoCall(isHelperView) {
   }
 }
 
+// Check if screen sharing is supported
+function isScreenShareSupported() {
+  return !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+}
+
 // Screen sharing - works with or without active video call
 async function startScreenShare(isHelperView) {
+  console.log("Screen share started, supported:", isScreenShareSupported());
+  
+  // Check if screen sharing is supported (not on iOS Safari)
+  if (!isScreenShareSupported()) {
+    alert("Screen sharing is not supported on this device. Use the VIDEO CALL button instead, and point your camera at the screen.");
+    return false;
+  }
+  
   try {
+    console.log("Requesting display media...");
     const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+    console.log("Got display media stream:", stream);
     
-    // Show local screen preview
+    // Show video area first
     if (isHelperView) {
-      helperLocalVideo.srcObject = stream;
       helperVideoArea.classList.remove("hidden");
+      helperLocalVideo.srcObject = stream;
     } else {
-      localVideo.srcObject = stream;
       videoArea.classList.remove("hidden");
+      localVideo.srcObject = stream;
     }
+    console.log("Video area shown");
     
     // If video call is active, replace the video track
     if (peerConnection) {
+      console.log("Replacing track in existing connection");
       const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === "video");
       if (sender) {
         await sender.replaceTrack(stream.getVideoTracks()[0]);
+        console.log("Track replaced");
       }
     } else {
       // No video call active - start one with screen share
+      console.log("Starting new video call with screen");
       await startVideoCallWithStream(isHelperView, stream);
     }
     
     // Handle when user stops sharing
     stream.getVideoTracks()[0].onended = async () => {
+      console.log("Screen sharing stopped");
       if (isHelperView) {
         helperLocalVideo.srcObject = localStream;
-        // If we have local stream, restore it to peer connection
         if (peerConnection && localStream) {
           const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === "video");
           if (sender) {
@@ -459,7 +478,8 @@ async function startScreenShare(isHelperView) {
     
     return true;
   } catch (e) {
-    alert("Could not share screen. Please allow permission.");
+    console.error("Screen share error:", e);
+    alert("Could not share screen. Error: " + e.message);
     return false;
   }
 }
@@ -786,4 +806,11 @@ updateUI();
 // Request notification permission on load (for helper mode)
 if (isHelper) {
   requestNotificationPermission();
+}
+
+// Hide screen share buttons if not supported (iOS Safari)
+if (!isScreenShareSupported()) {
+  screenShareBtn.style.display = "none";
+  helperScreenShareBtn.style.display = "none";
+  console.log("Screen share not supported - buttons hidden");
 }
