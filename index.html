@@ -3,61 +3,85 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#2563eb">
-  <title>Tech Support</title>
+  <meta name="theme-color" content="#0066cc">
+  <title>Tech Support - Joe</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="app">
     <header>
-      <h1>Tech Support</h1>
-      <button id="switchBtn" class="switch-btn">Switch</button>
+      <h1>TECH SUPPORT</h1>
+      <button id="switchBtn" class="switch-btn">Switch to Helper View</button>
     </header>
 
     <!-- JOE'S VIEW (needs help) -->
     <main id="joeView">
       <div class="card">
-        <h2>Need help, Joe?</h2>
-        <button id="helpBtn" class="big-btn">Get Help</button>
+        <h2>Need Help, Joe?</h2>
+        <p style="margin-bottom: 24px;">Tap the button below to call Ryder for help</p>
+        <button id="helpBtn" class="big-btn">TAP TO GET HELP</button>
       </div>
       
       <div id="waitingBox" class="card hidden">
-        <h3>Waiting for Ryder...</h3>
-        <p>Ryder will connect soon.</p>
+        <h3 class="waiting-text">Waiting for Ryder...</h3>
+        <p>Ryder will connect with you soon.</p>
+        <p style="margin-top: 16px; font-size: 20px;">Please wait. Do not close this page.</p>
       </div>
 
       <div id="chatBox" class="card hidden">
-        <h3>Connected with Ryder</h3>
+        <h3>Connected with Ryder!</h3>
         <div id="messages" class="messages"></div>
         <form id="chatForm">
-          <input type="text" id="chatInput" placeholder="Type message..." maxlength="280">
-          <button type="submit">Send</button>
+          <input type="text" id="chatInput" placeholder="Type your message here..." maxlength="280">
+          <button type="submit">SEND</button>
         </form>
-        <button id="endBtn" class="end-btn">End Session</button>
+        
+        <div class="screen-share">
+          <h4>Share Your Screen with Ryder:</h4>
+          <ol>
+            <li>Open FaceTime app</li>
+            <li>Call Ryder's phone</li>
+            <li>During the call, swipe up from bottom</li>
+            <li>Tap "Share My Screen"</li>
+          </ol>
+        </div>
+        
+        <button id="endBtn" class="end-btn">END SESSION</button>
       </div>
     </main>
 
     <!-- RYDER'S VIEW (helper) -->
     <main id="ryderView" class="hidden">
       <div class="card">
-        <h2>Ryder's Support Panel</h2>
+        <h2>Ryder's Helper Panel</h2>
         <p id="statusText">No help requests yet.</p>
-        <button id="refreshBtn">Refresh</button>
+        <button id="refreshBtn" style="margin-top: 16px; padding: 16px 32px; font-size: 22px; background: #f0f0f0; border: 3px solid #333; border-radius: 12px; cursor: pointer;">Refresh</button>
       </div>
 
       <div id="alertBox" class="card alert hidden">
-        <h3>Joe needs help!</h3>
-        <button id="connectBtn" class="big-btn">Connect</button>
+        <h3>JOE NEEDS HELP!</h3>
+        <p style="font-size: 26px;">Tap below to connect</p>
+        <button id="connectBtn" class="big-btn">TAP TO CONNECT</button>
       </div>
 
       <div id="helperChatBox" class="card hidden">
         <h3>Connected with Joe</h3>
         <div id="helperMessages" class="messages"></div>
         <form id="helperChatForm">
-          <input type="text" id="helperChatInput" placeholder="Type message..." maxlength="280">
-          <button type="submit">Send</button>
+          <input type="text" id="helperChatInput" placeholder="Type your message..." maxlength="280">
+          <button type="submit">SEND</button>
         </form>
-        <button id="helperEndBtn" class="end-btn">End Session</button>
+        
+        <div class="screen-share">
+          <h4>Guide Joe to Share Screen:</h4>
+          <ol>
+            <li>Ask Joe to open FaceTime</li>
+            <li>Have Joe call your phone</li>
+            <li>Tell Joe to swipe up and tap "Share My Screen"</li>
+          </ol>
+        </div>
+        
+        <button id="helperEndBtn" class="end-btn">END SESSION</button>
       </div>
     </main>
   </div>
