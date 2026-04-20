@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#2563eb">
+  <title>Tech Support</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Tech Support</h1>
+      <button id="switchBtn" class="switch-btn">Switch</button>
+    </header>
+
+    <!-- JOE'S VIEW (needs help) -->
+    <main id="joeView">
+      <div class="card">
+        <h2>Need help, Joe?</h2>
+        <button id="helpBtn" class="big-btn">Get Help</button>
+      </div>
+      
+      <div id="waitingBox" class="card hidden">
+        <h3>Waiting for Ryder...</h3>
+        <p>Ryder will connect soon.</p>
+      </div>
+
+      <div id="chatBox" class="card hidden">
+        <h3>Connected with Ryder</h3>
+        <div id="messages" class="messages"></div>
+        <form id="chatForm">
+          <input type="text" id="chatInput" placeholder="Type message..." maxlength="280">
+          <button type="submit">Send</button>
+        </form>
+        <button id="endBtn" class="end-btn">End Session</button>
+      </div>
+    </main>
+
+    <!-- RYDER'S VIEW (helper) -->
+    <main id="ryderView" class="hidden">
+      <div class="card">
+        <h2>Ryder's Support Panel</h2>
+        <p id="statusText">No help requests yet.</p>
+        <button id="refreshBtn">Refresh</button>
+      </div>
+
+      <div id="alertBox" class="card alert hidden">
+        <h3>Joe needs help!</h3>
+        <button id="connectBtn" class="big-btn">Connect</button>
+      </div>
+
+      <div id="helperChatBox" class="card hidden">
+        <h3>Connected with Joe</h3>
+        <div id="helperMessages" class="messages"></div>
+        <form id="helperChatForm">
+          <input type="text" id="helperChatInput" placeholder="Type message..." maxlength="280">
+          <button type="submit">Send</button>
+        </form>
+        <button id="helperEndBtn" class="end-btn">End Session</button>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
