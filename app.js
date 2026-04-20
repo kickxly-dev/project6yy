@@ -1,6 +1,7 @@
 // State
 let session = null;
 let previousSession = null;
+let previousMessageCount = 0;
 let isHelper = window.HELPER_MODE || false;
 
 // Audio context for mobile support
@@ -21,6 +22,30 @@ function getAudioContext() {
   }
   
   return audioCtx;
+}
+
+// Play gentle message notification sound
+function playMessageSound() {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    // Single gentle ding
+    osc.frequency.value = 880;
+    osc.type = "sine";
+    gain.gain.value = 0.2;
+    
+    const now = ctx.currentTime;
+    osc.start(now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+    osc.stop(now + 0.2);
+  } catch (e) {}
 }
 
 // Play gentler alert sound (sine wave, lower frequency) + vibration
@@ -120,13 +145,15 @@ const helperEndBtn = document.getElementById("helperEndBtn");
 const videoArea = document.getElementById("videoArea");
 const localVideo = document.getElementById("localVideo");
 const remoteVideo = document.getElementById("remoteVideo");
-const cameraBtn = document.getElementById("cameraBtn");
+const videoCallBtn = document.getElementById("videoCallBtn");
+const screenShareBtn = document.getElementById("screenShareBtn");
 const voiceBtn = document.getElementById("voiceBtn");
 
 const helperVideoArea = document.getElementById("helperVideoArea");
 const helperLocalVideo = document.getElementById("helperLocalVideo");
 const helperRemoteVideo = document.getElementById("helperRemoteVideo");
-const helperCameraBtn = document.getElementById("helperCameraBtn");
+const helperVideoCallBtn = document.getElementById("helperVideoCallBtn");
+const helperScreenShareBtn = document.getElementById("helperScreenShareBtn");
 const helperVoiceBtn = document.getElementById("helperVoiceBtn");
 
 // WebRTC state
@@ -219,6 +246,202 @@ function stopVoice(isHelperView) {
   }
   
   isVoiceOn = false;
+}
+
+// WebRTC Peer Connection functions
+let remoteStream = null;
+
+// Create peer connection
+function createPeerConnection(isHelperView) {
+  const pc = new RTCPeerConnection({
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" }
+    ]
+  });
+  
+  // Handle remote stream
+  pc.ontrack = (event) => {
+    if (isHelperView) {
+      helperRemoteVideo.srcObject = event.streams[0];
+    } else {
+      remoteVideo.srcObject = event.streams[0];
+    }
+  };
+  
+  // Handle ICE candidates
+  pc.onicecandidate = async (event) => {
+    if (event.candidate) {
+      await api("/api/webrtc/candidate", "POST", { candidate: event.candidate });
+    }
+  };
+  
+  return pc;
+}
+
+// Start video call with peer connection
+async function startVideoCall(isHelperView) {
+  try {
+    // Get local stream
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    
+    // Show local video
+    if (isHelperView) {
+      helperLocalVideo.srcObject = localStream;
+      helperVideoArea.classList.remove("hidden");
+    } else {
+      localVideo.srcObject = localStream;
+      videoArea.classList.remove("hidden");
+    }
+    
+    // Create peer connection
+    peerConnection = createPeerConnection(isHelperView);
+    
+    // Add local tracks to peer connection
+    localStream.getTracks().forEach(track => {
+      peerConnection.addTrack(track, localStream);
+    });
+    
+    // Create and send offer (Joe initiates)
+    if (!isHelperView) {
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+      await api("/api/webrtc/offer", "POST", { offer: offer });
+    } else {
+      // Helper waits for offer and creates answer
+      pollForOffer();
+    }
+    
+    // Poll for remote answer or candidates
+    if (!isHelperView) {
+      pollForAnswer();
+    }
+    pollForCandidates();
+    
+    return true;
+  } catch (e) {
+    console.error("Video call failed:", e);
+    alert("Could not start video call. Please allow camera/microphone permission.");
+    return false;
+  }
+}
+
+// Poll for offer (helper side)
+async function pollForOffer() {
+  if (!peerConnection) return;
+  
+  try {
+    const data = await api("/api/webrtc/offer");
+    if (data.offer && peerConnection.signalingState !== "have-remote-offer") {
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+      await api("/api/webrtc/answer", "POST", { answer: answer });
+    }
+  } catch (e) {
+    console.error("Poll offer failed:", e);
+  }
+  
+  setTimeout(pollForOffer, 1000);
+}
+
+// Poll for answer (Joe side)
+async function pollForAnswer() {
+  if (!peerConnection) return;
+  
+  try {
+    const data = await api("/api/webrtc/answer");
+    if (data.answer && peerConnection.signalingState === "have-local-offer") {
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+    }
+  } catch (e) {
+    console.error("Poll answer failed:", e);
+  }
+  
+  if (peerConnection && peerConnection.connectionState !== "connected") {
+    setTimeout(pollForAnswer, 1000);
+  }
+}
+
+// Poll for ICE candidates
+async function pollForCandidates() {
+  if (!peerConnection) return;
+  
+  try {
+    const data = await api("/api/webrtc/candidates");
+    for (const candidate of data.candidates) {
+      try {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (e) {
+        // Ignore if already added
+      }
+    }
+  } catch (e) {
+    console.error("Poll candidates failed:", e);
+  }
+  
+  if (peerConnection && peerConnection.connectionState !== "closed") {
+    setTimeout(pollForCandidates, 1000);
+  }
+}
+
+// End video call
+function endVideoCall(isHelperView) {
+  if (peerConnection) {
+    peerConnection.close();
+    peerConnection = null;
+  }
+  
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+    localStream = null;
+  }
+  
+  if (isHelperView) {
+    helperLocalVideo.srcObject = null;
+    helperRemoteVideo.srcObject = null;
+    helperVideoArea.classList.add("hidden");
+  } else {
+    localVideo.srcObject = null;
+    remoteVideo.srcObject = null;
+    videoArea.classList.add("hidden");
+  }
+}
+
+// Screen sharing
+async function startScreenShare(isHelperView) {
+  try {
+    const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+    
+    if (isHelperView) {
+      helperLocalVideo.srcObject = stream;
+      helperVideoArea.classList.remove("hidden");
+    } else {
+      localVideo.srcObject = stream;
+      videoArea.classList.remove("hidden");
+    }
+    
+    // Replace tracks in peer connection if active
+    if (peerConnection) {
+      const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === "video");
+      if (sender) {
+        sender.replaceTrack(stream.getVideoTracks()[0]);
+      }
+    }
+    
+    stream.getVideoTracks()[0].onended = () => {
+      if (isHelperView) {
+        helperLocalVideo.srcObject = localStream;
+      } else {
+        localVideo.srcObject = localStream;
+      }
+    };
+    
+    return true;
+  } catch (e) {
+    alert("Could not share screen. Please allow permission.");
+    return false;
+  }
 }
 
 // API helper
@@ -320,6 +543,14 @@ async function refresh() {
       showAlertNotification();
     }
     
+    // Detect new messages and play sound
+    const currentMsgCount = session?.messages?.length || 0;
+    const newMsgCount = newSession?.messages?.length || 0;
+    if (newMsgCount > currentMsgCount && newMsgCount > previousMessageCount) {
+      playMessageSound();
+    }
+    previousMessageCount = newMsgCount;
+    
     previousSession = session;
     session = newSession;
     updateUI();
@@ -400,21 +631,61 @@ switchBtn.addEventListener("click", async () => {
   }
 });
 
-// Camera button handlers
-cameraBtn.addEventListener("click", async () => {
-  if (isVideoOn) {
-    stopCamera(false);
-    cameraBtn.textContent = "CAMERA";
-    cameraBtn.classList.remove("active");
+// Video call button handlers
+videoCallBtn.addEventListener("click", async () => {
+  if (peerConnection) {
+    endVideoCall(false);
+    videoCallBtn.textContent = "VIDEO CALL";
+    videoCallBtn.classList.remove("active");
   } else {
-    const success = await startCamera(false);
+    const success = await startVideoCall(false);
     if (success) {
-      cameraBtn.textContent = "STOP CAMERA";
-      cameraBtn.classList.add("active");
+      videoCallBtn.textContent = "END VIDEO";
+      videoCallBtn.classList.add("active");
     }
   }
 });
 
+helperVideoCallBtn.addEventListener("click", async () => {
+  if (peerConnection) {
+    endVideoCall(true);
+    helperVideoCallBtn.textContent = "VIDEO CALL";
+    helperVideoCallBtn.classList.remove("active");
+  } else {
+    const success = await startVideoCall(true);
+    if (success) {
+      helperVideoCallBtn.textContent = "END VIDEO";
+      helperVideoCallBtn.classList.add("active");
+    }
+  }
+});
+
+// Screen share button handlers
+screenShareBtn.addEventListener("click", async () => {
+  const success = await startScreenShare(false);
+  if (success) {
+    screenShareBtn.textContent = "STOP SHARING";
+    screenShareBtn.classList.add("active");
+    setTimeout(() => {
+      screenShareBtn.textContent = "SHARE SCREEN";
+      screenShareBtn.classList.remove("active");
+    }, 5000);
+  }
+});
+
+helperScreenShareBtn.addEventListener("click", async () => {
+  const success = await startScreenShare(true);
+  if (success) {
+    helperScreenShareBtn.textContent = "STOP SHARING";
+    helperScreenShareBtn.classList.add("active");
+    setTimeout(() => {
+      helperScreenShareBtn.textContent = "SHARE SCREEN";
+      helperScreenShareBtn.classList.remove("active");
+    }, 5000);
+  }
+});
+
+// Voice call button handlers (local only)
 voiceBtn.addEventListener("click", async () => {
   if (isVoiceOn) {
     stopVoice(false);
@@ -425,20 +696,6 @@ voiceBtn.addEventListener("click", async () => {
     if (success) {
       voiceBtn.textContent = "END CALL";
       voiceBtn.classList.add("active");
-    }
-  }
-});
-
-helperCameraBtn.addEventListener("click", async () => {
-  if (isVideoOn) {
-    stopCamera(true);
-    helperCameraBtn.textContent = "CAMERA";
-    helperCameraBtn.classList.remove("active");
-  } else {
-    const success = await startCamera(true);
-    if (success) {
-      helperCameraBtn.textContent = "STOP CAMERA";
-      helperCameraBtn.classList.add("active");
     }
   }
 });

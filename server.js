@@ -9,6 +9,7 @@ const PORT = process.env.PORT || 8080;
 
 // In-memory session storage
 let session = null;
+let webrtcData = { offer: null, answer: null, candidates: [] };
 
 const MIME_TYPES = {
   ".html": "text/html",
@@ -118,7 +119,41 @@ const server = http.createServer(async (req, res) => {
         time: new Date().toISOString()
       });
     }
+    // Clear WebRTC data
+    webrtcData = { offer: null, answer: null, candidates: [] };
     return json(res, 200, { session });
+  }
+
+  // WebRTC signaling endpoints
+  if (pathname === "/api/webrtc/offer" && req.method === "POST") {
+    const body = await parseBody(req);
+    webrtcData.offer = body.offer;
+    webrtcData.candidates = [];
+    return json(res, 200, { success: true });
+  }
+
+  if (pathname === "/api/webrtc/offer" && req.method === "GET") {
+    return json(res, 200, { offer: webrtcData.offer });
+  }
+
+  if (pathname === "/api/webrtc/answer" && req.method === "POST") {
+    const body = await parseBody(req);
+    webrtcData.answer = body.answer;
+    return json(res, 200, { success: true });
+  }
+
+  if (pathname === "/api/webrtc/answer" && req.method === "GET") {
+    return json(res, 200, { answer: webrtcData.answer });
+  }
+
+  if (pathname === "/api/webrtc/candidate" && req.method === "POST") {
+    const body = await parseBody(req);
+    webrtcData.candidates.push(body.candidate);
+    return json(res, 200, { success: true });
+  }
+
+  if (pathname === "/api/webrtc/candidates" && req.method === "GET") {
+    return json(res, 200, { candidates: webrtcData.candidates });
   }
 
   // /ryder route - helper view
