@@ -1,6 +1,41 @@
 // State
 let session = null;
+let previousSession = null;
 let isHelper = window.HELPER_MODE || false;
+
+// Alert sound (base64 encoded short beep)
+const ALERT_SOUND = "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2Onp+ZjHlqYF9ncYOLk5aWj4F0amVodYWJjo+OioN7bWdlcIKFh4eGhIN8cGhnaH+DhYWFhYSDe3BpZ2l/g4WFhISEg3twaWdpf4OFhYSEhIN7cGlnaX+DhYWEhISDe3BpZ2l/g4WFhISEg3twaWdpf4OFhYSEhIN7cGlnaX+DhYWEhA==";
+
+// Play alert sound
+function playAlertSound() {
+  try {
+    const audio = new Audio(ALERT_SOUND);
+    audio.volume = 1.0;
+    audio.play().catch(() => {});
+  } catch (e) {}
+}
+
+// Request notification permission
+async function requestNotificationPermission() {
+  if (!("Notification" in window)) return false;
+  if (Notification.permission === "granted") return true;
+  if (Notification.permission === "denied") return false;
+  const permission = await Notification.requestPermission();
+  return permission === "granted";
+}
+
+// Show notification
+function showAlertNotification() {
+  if (!("Notification" in window)) return;
+  if (Notification.permission !== "granted") return;
+  
+  new Notification("JOE NEEDS HELP!", {
+    body: "Tap to connect and help Joe",
+    icon: "/icon.svg",
+    requireInteraction: true,
+    tag: "tech-support-alert"
+  });
+}
 
 // DOM elements
 const joeView = document.getElementById("joeView");
@@ -114,7 +149,16 @@ function updateUI() {
 async function refresh() {
   try {
     const data = await api("/api/session");
-    session = data.session;
+    const newSession = data.session;
+    
+    // Detect new help request (helper only)
+    if (isHelper && !previousSession && newSession && newSession.status === "pending") {
+      playAlertSound();
+      showAlertNotification();
+    }
+    
+    previousSession = session;
+    session = newSession;
     updateUI();
   } catch (e) {
     console.error("Refresh failed:", e);
@@ -173,3 +217,8 @@ switchBtn.addEventListener("click", () => {
 setInterval(refresh, 2000);
 refresh();
 updateUI();
+
+// Request notification permission on load (for helper mode)
+if (isHelper) {
+  requestNotificationPermission();
+}
