@@ -59,6 +59,111 @@ const helperChatForm = document.getElementById("helperChatForm");
 const helperChatInput = document.getElementById("helperChatInput");
 const helperEndBtn = document.getElementById("helperEndBtn");
 
+// Video elements
+const videoArea = document.getElementById("videoArea");
+const localVideo = document.getElementById("localVideo");
+const remoteVideo = document.getElementById("remoteVideo");
+const cameraBtn = document.getElementById("cameraBtn");
+const voiceBtn = document.getElementById("voiceBtn");
+
+const helperVideoArea = document.getElementById("helperVideoArea");
+const helperLocalVideo = document.getElementById("helperLocalVideo");
+const helperRemoteVideo = document.getElementById("helperRemoteVideo");
+const helperCameraBtn = document.getElementById("helperCameraBtn");
+const helperVoiceBtn = document.getElementById("helperVoiceBtn");
+
+// WebRTC state
+let localStream = null;
+let peerConnection = null;
+let isVideoOn = false;
+let isVoiceOn = false;
+
+// WebRTC config (free STUN servers)
+const RTC_CONFIG = {
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" }
+  ]
+};
+
+// Start camera
+async function startCamera(isHelperView) {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    localStream = stream;
+    
+    if (isHelperView) {
+      helperLocalVideo.srcObject = stream;
+      helperVideoArea.classList.remove("hidden");
+    } else {
+      localVideo.srcObject = stream;
+      videoArea.classList.remove("hidden");
+    }
+    
+    isVideoOn = true;
+    return true;
+  } catch (e) {
+    alert("Could not access camera. Please allow camera permission.");
+    return false;
+  }
+}
+
+// Stop camera
+function stopCamera(isHelperView) {
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+    localStream = null;
+  }
+  
+  if (isHelperView) {
+    helperLocalVideo.srcObject = null;
+    helperVideoArea.classList.add("hidden");
+  } else {
+    localVideo.srcObject = null;
+    videoArea.classList.add("hidden");
+  }
+  
+  isVideoOn = false;
+}
+
+// Start voice call
+async function startVoice(isHelperView) {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    localStream = stream;
+    
+    if (isHelperView) {
+      helperLocalVideo.srcObject = stream;
+      helperLocalVideo.muted = true;
+    } else {
+      localVideo.srcObject = stream;
+      localVideo.muted = true;
+    }
+    
+    isVoiceOn = true;
+    return true;
+  } catch (e) {
+    alert("Could not access microphone. Please allow microphone permission.");
+    return false;
+  }
+}
+
+// Stop voice
+function stopVoice(isHelperView) {
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+    localStream = null;
+  }
+  
+  if (isHelperView) {
+    helperLocalVideo.srcObject = null;
+  } else {
+    localVideo.srcObject = null;
+  }
+  
+  isVoiceOn = false;
+}
+
 // API helper
 async function api(endpoint, method = "GET", body = null) {
   const options = { method };
@@ -211,6 +316,63 @@ helperEndBtn.addEventListener("click", async () => {
 switchBtn.addEventListener("click", () => {
   isHelper = !isHelper;
   updateUI();
+});
+
+// Camera button handlers
+cameraBtn.addEventListener("click", async () => {
+  if (isVideoOn) {
+    stopCamera(false);
+    cameraBtn.textContent = "CAMERA";
+    cameraBtn.classList.remove("active");
+  } else {
+    const success = await startCamera(false);
+    if (success) {
+      cameraBtn.textContent = "STOP CAMERA";
+      cameraBtn.classList.add("active");
+    }
+  }
+});
+
+voiceBtn.addEventListener("click", async () => {
+  if (isVoiceOn) {
+    stopVoice(false);
+    voiceBtn.textContent = "VOICE CALL";
+    voiceBtn.classList.remove("active");
+  } else {
+    const success = await startVoice(false);
+    if (success) {
+      voiceBtn.textContent = "END CALL";
+      voiceBtn.classList.add("active");
+    }
+  }
+});
+
+helperCameraBtn.addEventListener("click", async () => {
+  if (isVideoOn) {
+    stopCamera(true);
+    helperCameraBtn.textContent = "CAMERA";
+    helperCameraBtn.classList.remove("active");
+  } else {
+    const success = await startCamera(true);
+    if (success) {
+      helperCameraBtn.textContent = "STOP CAMERA";
+      helperCameraBtn.classList.add("active");
+    }
+  }
+});
+
+helperVoiceBtn.addEventListener("click", async () => {
+  if (isVoiceOn) {
+    stopVoice(true);
+    helperVoiceBtn.textContent = "VOICE CALL";
+    helperVoiceBtn.classList.remove("active");
+  } else {
+    const success = await startVoice(true);
+    if (success) {
+      helperVoiceBtn.textContent = "END CALL";
+      helperVoiceBtn.classList.add("active");
+    }
+  }
 });
 
 // Start polling

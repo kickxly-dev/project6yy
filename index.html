@@ -30,21 +30,23 @@
 
       <div id="chatBox" class="card hidden">
         <h3>Connected with Ryder!</h3>
+        
+        <!-- Video area -->
+        <div id="videoArea" class="video-area hidden">
+          <video id="localVideo" autoplay muted playsinline></video>
+          <video id="remoteVideo" autoplay playsinline></video>
+        </div>
+        
+        <div class="call-buttons">
+          <button id="cameraBtn" class="call-btn">CAMERA</button>
+          <button id="voiceBtn" class="call-btn">VOICE CALL</button>
+        </div>
+        
         <div id="messages" class="messages"></div>
         <form id="chatForm">
           <input type="text" id="chatInput" placeholder="Type your message here..." maxlength="280">
           <button type="submit">SEND</button>
         </form>
-        
-        <div class="screen-share">
-          <h4>Share Your Screen with Ryder:</h4>
-          <ol>
-            <li>Open FaceTime app</li>
-            <li>Call Ryder's phone</li>
-            <li>During the call, swipe up from bottom</li>
-            <li>Tap "Share My Screen"</li>
-          </ol>
-        </div>
         
         <button id="endBtn" class="end-btn">END SESSION</button>
       </div>
@@ -66,20 +68,23 @@
 
       <div id="helperChatBox" class="card hidden">
         <h3>Connected with Joe</h3>
+        
+        <!-- Video area -->
+        <div id="helperVideoArea" class="video-area hidden">
+          <video id="helperLocalVideo" autoplay muted playsinline></video>
+          <video id="helperRemoteVideo" autoplay playsinline></video>
+        </div>
+        
+        <div class="call-buttons">
+          <button id="helperCameraBtn" class="call-btn">CAMERA</button>
+          <button id="helperVoiceBtn" class="call-btn">VOICE CALL</button>
+        </div>
+        
         <div id="helperMessages" class="messages"></div>
         <form id="helperChatForm">
           <input type="text" id="helperChatInput" placeholder="Type your message..." maxlength="280">
           <button type="submit">SEND</button>
         </form>
-        
-        <div class="screen-share">
-          <h4>Guide Joe to Share Screen:</h4>
-          <ol>
-            <li>Ask Joe to open FaceTime</li>
-            <li>Have Joe call your phone</li>
-            <li>Tell Joe to swipe up and tap "Share My Screen"</li>
-          </ol>
-        </div>
         
         <button id="helperEndBtn" class="end-btn">END SESSION</button>
       </div>

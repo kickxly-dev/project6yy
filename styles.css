@@ -241,6 +241,54 @@ button[type="submit"]:hover {
   display: none !important;
 }
 
+/* Video area */
+.video-area {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.video-area video {
+  width: 100%;
+  max-width: 280px;
+  height: 200px;
+  background: #000;
+  border-radius: 16px;
+  border: 3px solid #333;
+}
+
+/* Call buttons */
+.call-buttons {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.call-btn {
+  flex: 1;
+  min-width: 140px;
+  padding: 20px;
+  font-size: 24px;
+  font-weight: 700;
+  background: #4caf50;
+  color: white;
+  border: 3px solid #388e3c;
+  border-radius: 16px;
+  cursor: pointer;
+}
+
+.call-btn:hover {
+  background: #43a047;
+}
+
+.call-btn.active {
+  background: #f44336;
+  border-color: #d32f2f;
+}
+
 /* Make waiting animation */
 .waiting-text {
   animation: blink 1.5s infinite;
