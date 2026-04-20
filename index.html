@@ -33,8 +33,14 @@
         
         <!-- Video area -->
         <div id="videoArea" class="video-area hidden">
-          <video id="localVideo" autoplay muted playsinline></video>
-          <video id="remoteVideo" autoplay playsinline></video>
+          <div class="video-wrapper">
+            <video id="localVideo" autoplay muted playsinline></video>
+            <span class="video-label">You</span>
+          </div>
+          <div class="video-wrapper">
+            <video id="remoteVideo" autoplay playsinline></video>
+            <span class="video-label">Ryder</span>
+          </div>
         </div>
         
         <div class="call-buttons">
@@ -75,8 +81,14 @@
         
         <!-- Video area -->
         <div id="helperVideoArea" class="video-area hidden">
-          <video id="helperLocalVideo" autoplay muted playsinline></video>
-          <video id="helperRemoteVideo" autoplay playsinline></video>
+          <div class="video-wrapper">
+            <video id="helperLocalVideo" autoplay muted playsinline></video>
+            <span class="video-label">You</span>
+          </div>
+          <div class="video-wrapper">
+            <video id="helperRemoteVideo" autoplay playsinline></video>
+            <span class="video-label">Joe</span>
+          </div>
         </div>
         
         <div class="call-buttons">

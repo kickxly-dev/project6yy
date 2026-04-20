@@ -408,11 +408,12 @@ function endVideoCall(isHelperView) {
   }
 }
 
-// Screen sharing
+// Screen sharing - works with or without active video call
 async function startScreenShare(isHelperView) {
   try {
     const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
     
+    // Show local screen preview
     if (isHelperView) {
       helperLocalVideo.srcObject = stream;
       helperVideoArea.classList.remove("hidden");
@@ -421,25 +422,88 @@ async function startScreenShare(isHelperView) {
       videoArea.classList.remove("hidden");
     }
     
-    // Replace tracks in peer connection if active
+    // If video call is active, replace the video track
     if (peerConnection) {
       const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === "video");
       if (sender) {
-        sender.replaceTrack(stream.getVideoTracks()[0]);
+        await sender.replaceTrack(stream.getVideoTracks()[0]);
       }
+    } else {
+      // No video call active - start one with screen share
+      await startVideoCallWithStream(isHelperView, stream);
     }
     
-    stream.getVideoTracks()[0].onended = () => {
+    // Handle when user stops sharing
+    stream.getVideoTracks()[0].onended = async () => {
       if (isHelperView) {
         helperLocalVideo.srcObject = localStream;
+        // If we have local stream, restore it to peer connection
+        if (peerConnection && localStream) {
+          const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === "video");
+          if (sender) {
+            const videoTrack = localStream.getVideoTracks()[0];
+            if (videoTrack) await sender.replaceTrack(videoTrack);
+          }
+        }
       } else {
         localVideo.srcObject = localStream;
+        if (peerConnection && localStream) {
+          const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === "video");
+          if (sender) {
+            const videoTrack = localStream.getVideoTracks()[0];
+            if (videoTrack) await sender.replaceTrack(videoTrack);
+          }
+        }
       }
     };
     
     return true;
   } catch (e) {
     alert("Could not share screen. Please allow permission.");
+    return false;
+  }
+}
+
+// Start video call with specific stream (for screen sharing)
+async function startVideoCallWithStream(isHelperView, stream) {
+  try {
+    localStream = stream;
+    
+    // Show local video
+    if (isHelperView) {
+      helperLocalVideo.srcObject = stream;
+      helperVideoArea.classList.remove("hidden");
+    } else {
+      localVideo.srcObject = stream;
+      videoArea.classList.remove("hidden");
+    }
+    
+    // Create peer connection
+    peerConnection = createPeerConnection(isHelperView);
+    
+    // Add local tracks to peer connection
+    stream.getTracks().forEach(track => {
+      peerConnection.addTrack(track, stream);
+    });
+    
+    // Create and send offer
+    if (!isHelperView) {
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+      await api("/api/webrtc/offer", "POST", { offer: offer });
+    } else {
+      pollForOffer();
+    }
+    
+    // Poll for connection
+    if (!isHelperView) {
+      pollForAnswer();
+    }
+    pollForCandidates();
+    
+    return true;
+  } catch (e) {
+    console.error("Video call failed:", e);
     return false;
   }
 }
