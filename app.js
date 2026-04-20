@@ -3,30 +3,69 @@ let session = null;
 let previousSession = null;
 let isHelper = window.HELPER_MODE || false;
 
-// Play alert sound using Web Audio API (louder and more reliable)
+// Audio context for mobile support
+let audioCtx = null;
+
+// Get or create audio context (needed for mobile)
+function getAudioContext() {
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) return null;
+  
+  if (!audioCtx) {
+    audioCtx = new AudioContext();
+  }
+  
+  // Resume if suspended (mobile requirement)
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+  
+  return audioCtx;
+}
+
+// Play gentler alert sound (sine wave, lower frequency) + vibration
 function playAlertSound() {
+  // Vibrate phone if supported (works on mobile even if sound blocked)
+  if (navigator.vibrate) {
+    navigator.vibrate([200, 100, 200, 100, 200]);
+  }
+  
   try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
     
-    const ctx = new AudioContext();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     
     osc.connect(gain);
     gain.connect(ctx.destination);
     
-    osc.frequency.value = 800;
-    osc.type = "square";
-    gain.gain.value = 1.0;
+    // Gentler settings: sine wave at 523Hz (C5 note - pleasant chime)
+    osc.frequency.value = 523;
+    osc.type = "sine";
+    gain.gain.value = 0.3; // Lower volume
     
     osc.start();
     
-    // Beep pattern: on for 200ms, off for 100ms, on for 200ms
-    setTimeout(() => { gain.gain.value = 0; }, 200);
-    setTimeout(() => { gain.gain.value = 1.0; }, 300);
-    setTimeout(() => { gain.gain.value = 0; }, 500);
-    setTimeout(() => { osc.stop(); ctx.close(); }, 600);
+    // Pleasant chime pattern: 3 gentle beeps
+    const now = ctx.currentTime;
+    gain.gain.setValueAtTime(0.3, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+    
+    // Second chime
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.frequency.value = 659; // E5 note - harmonious
+    osc2.type = "sine";
+    gain2.gain.value = 0;
+    osc2.start(now + 0.4);
+    gain2.gain.setValueAtTime(0.3, now + 0.4);
+    gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.7);
+    osc2.stop(now + 0.8);
+    
+    osc.stop(now + 0.3);
   } catch (e) {
     console.error("Sound failed:", e);
   }
@@ -276,6 +315,7 @@ async function refresh() {
     
     // Detect new help request (helper only)
     if (isHelper && !previousSession && newSession && newSession.status === "pending") {
+      getAudioContext(); // Initialize audio on mobile
       playAlertSound();
       showAlertNotification();
     }
@@ -303,6 +343,8 @@ refreshBtn.addEventListener("click", refresh);
 
 // Test alert button - also unlocks audio context
 testAlertBtn.addEventListener("click", async () => {
+  // Initialize audio context on user gesture (required for mobile)
+  getAudioContext();
   playAlertSound();
   await requestNotificationPermission();
   
